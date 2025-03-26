@@ -6,6 +6,7 @@ import com.javelin.core.Middleware;
 import com.sun.net.httpserver.HttpExchange;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.List;
@@ -156,6 +157,23 @@ public class HttpExchangeContext implements Context {
             middlewareChain.get(currentIndex).handle(this);
         } else if (finalHandler != null) {
             finalHandler.run(); // 마지막 실제 라우터 핸들러
+        }
+    }
+
+    /**
+     * Parses the HTTP request body as JSON into the given class type.
+     *
+     * @param clazz the class to deserialize the request body into
+     * @param <T> the type of the expected object
+     * @return the deserialized object
+     * @throws RuntimeException if the body cannot be parsed
+     */
+    @Override
+    public <T> T body(Class<T> clazz) {
+        try (InputStream is = exchange.getRequestBody()) {
+            return mapper.readValue(is, clazz);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to parse request body", e);
         }
     }
 
