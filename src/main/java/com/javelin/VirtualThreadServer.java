@@ -16,18 +16,32 @@ import java.net.InetSocketAddress;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+/**
+ * Javelin's core HTTP server implementation using Java Virtual Threads.
+ * <p>
+ * Provides a minimal, high-concurrency alternative to traditional WAS systems
+ * like Tomcat or Jetty.
+ */
 public class VirtualThreadServer implements WebServer {
     private static final Logger logger = LoggerFactory.getLogger(VirtualThreadServer.class);
 
     private final int port;
     private final Router router = new Router();
-    private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
+    private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Virtual Thread 기반 실행기
     private HttpServer server;
 
+    /**
+     * Creates a new VirtualThreadServer listening on the given port.
+     *
+     * @param port the port to bind the HTTP server to
+     */
     public VirtualThreadServer(int port) {
         this.port = port;
     }
 
+    /**
+     * Starts the HTTP server and sets up the routing logic.
+     */
     @Override
     public void start() {
         try {
@@ -45,7 +59,7 @@ public class VirtualThreadServer implements WebServer {
                             try {
                                 handler.handle(new HttpExchangeContext(exchange));
                             } catch (Exception e) {
-                                e.printStackTrace(); // 나중에 에러 핸들러로 뺄 수 있음
+                                e.printStackTrace(); // TODO: Custom error handler
                             }
                         } else {
                             // 404 처리
@@ -65,8 +79,6 @@ public class VirtualThreadServer implements WebServer {
                 });
             });
 
-
-            // HttpServer에 executor 지정
             server.setExecutor(executor);
             server.start();
             logger.info("Server started on port {}", port);
@@ -75,6 +87,9 @@ public class VirtualThreadServer implements WebServer {
         }
     }
 
+    /**
+     * Stops the server immediately.
+     */
     @Override
     public void stop() throws WebServerException {
         if (server != null) {
@@ -84,6 +99,9 @@ public class VirtualThreadServer implements WebServer {
         }
     }
 
+    /**
+     * Returns the actual bound port, useful when using port 0 (auto-assign).
+     */
     @Override
     public int getPort() {
         if (server != null && server.getAddress() != null) {
@@ -92,29 +110,30 @@ public class VirtualThreadServer implements WebServer {
         return port;
     }
 
+    /**
+     * Gracefully shuts down the server with callback support.
+     */
     @Override
     public void shutDownGracefully(GracefulShutdownCallback callback) {
         if (server != null) {
             new Thread(() -> {
                 try {
                     logger.info("Initiating graceful shutdown...");
-
-                    // 예제에서는 1초 후에 graceful shutdown 진행
-                    Thread.sleep(1000);
+                    Thread.sleep(1000); // Give in-flight requests time to finish
                     stop();
-
-                    // shutdown 성공 시 IDLE 상태 전달
-                    logger.info("Graceful shutdown completed.");
                     callback.shutdownComplete(GracefulShutdownResult.IDLE);
+                    logger.info("Graceful shutdown completed.");
                 } catch (InterruptedException | WebServerException e) {
                     logger.error("Error during graceful shutdown", e);
-                    // 에러 발생 시 IMMEDIATE 상태 전달
                     callback.shutdownComplete(GracefulShutdownResult.IMMEDIATE);
                 }
             }).start();
         }
     }
 
+    /**
+     * Shuts down the executor service if not already stopped.
+     */
     @Override
     public void destroy() {
         if (!executor.isShutdown()) {
@@ -123,10 +142,22 @@ public class VirtualThreadServer implements WebServer {
         }
     }
 
+    /**
+     * Registers a GET route.
+     *
+     * @param path    the request path (e.g. {@code "/hello"})
+     * @param handler the handler to execute
+     */
     public void get(String path, JavelinHandler handler) {
         router.get(path, handler);
     }
 
+    /**
+     * Registers a POST route.
+     *
+     * @param path    the request path (e.g. {@code "/submit"})
+     * @param handler the handler to execute
+     */
     public void post(String path, JavelinHandler handler) {
         router.post(path, handler);
     }
