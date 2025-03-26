@@ -8,8 +8,8 @@ import java.util.Map;
 /**
  * Default exception handler used by Javelin when no user-defined handler is set.
  * <p>
- * Provides consistent HTTP status codes based on exception types,
- * and logs the error for diagnostics.
+ * Provides consistent HTTP status codes based on common exception types,
+ * and logs unexpected server errors for diagnostics.
  */
 public class DefaultExceptionHandler implements ExceptionHandler {
 
@@ -18,24 +18,26 @@ public class DefaultExceptionHandler implements ExceptionHandler {
     @Override
     public void handle(Throwable e, Context ctx) {
         int status;
-        String message;
+        String errorMsg;
 
+        // Map specific exception types to status codes
         if (e instanceof IllegalArgumentException) {
             status = 400;
-            message = "Bad Request: " + e.getMessage();
+            errorMsg = "Bad Request: " + e.getMessage();
         } else if (e instanceof SecurityException) {
             status = 403;
-            message = "Forbidden: " + e.getMessage();
+            errorMsg = "Forbidden: " + e.getMessage();
         } else {
             status = 500;
-            message = "Internal Server Error";
+            errorMsg = "Internal Server Error";
             log.error("Unhandled exception during request processing", e);
         }
 
+        // Respond with JSON
         ctx.status(status);
         ctx.json(Map.of(
                 "status", status,
-                "error", message
+                "error", errorMsg
         ));
     }
 }

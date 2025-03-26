@@ -1,8 +1,6 @@
 package com.javelin.core;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -12,107 +10,96 @@ import static com.javelin.constants.HttpConstants.*;
 /**
  * Javelin's routing system for mapping HTTP methods and paths to handlers.
  * <p>
- * Internally uses a thread-safe {@link ConcurrentHashMap} to register and lookup routes.
+ * Supports path variables via patterns like /users/{id}.
+ * Internally uses a thread-safe {@link ConcurrentHashMap} for route storage.
  */
 public class Router {
 
-    private final Map<String, JavelinHandler> routes = new ConcurrentHashMap<>();
-
     /**
-     * Registers a GET route.
-     *
-     * @param path    the route path (e.g. "/users")
-     * @param handler the handler to execute for this route
+     * Map key = "METHOD <regex>", e.g. "GET ^/users/(?<id>[^/]+)/?$"
+     * Value = Route object storing the handler & paramNames
      */
-    public void get(String path, JavelinHandler handler) {
-        addRoute(METHOD_GET, path, handler);
-    }
+    private final Map<String, Route> routes = new ConcurrentHashMap<>();
 
-    /**
-     * Registers a POST route.
-     */
-    public void post(String path, JavelinHandler handler) {
-        addRoute(METHOD_POST, path, handler);
-    }
+    // ========== Public route registration ==========
 
-    /**
-     * Registers a PUT route.
-     */
-    public void put(String path, JavelinHandler handler) {
-        addRoute(METHOD_PUT, path, handler);
-    }
-
-    /**
-     * Registers a DELETE route.
-     */
-    public void delete(String path, JavelinHandler handler) {
-        addRoute(METHOD_DELETE, path, handler);
-    }
-
-    /**
-     * Registers a PATCH route.
-     */
-    public void patch(String path, JavelinHandler handler) {
-        addRoute(METHOD_PATCH, path, handler);
-    }
-
-    /**
-     * Registers a HEAD route.
-     */
-    public void head(String path, JavelinHandler handler) {
-        addRoute(METHOD_HEAD, path, handler);
-    }
+    public void get(String path, JavelinHandler handler)    { addRoute(METHOD_GET, path, handler);    }
+    public void post(String path, JavelinHandler handler)   { addRoute(METHOD_POST, path, handler);   }
+    public void put(String path, JavelinHandler handler)    { addRoute(METHOD_PUT, path, handler);    }
+    public void delete(String path, JavelinHandler handler) { addRoute(METHOD_DELETE, path, handler); }
+    public void patch(String path, JavelinHandler handler)  { addRoute(METHOD_PATCH, path, handler);  }
+    public void head(String path, JavelinHandler handler)   { addRoute(METHOD_HEAD, path, handler);   }
 
     /**
      * Finds the appropriate handler based on HTTP method and path.
      *
      * @param method      HTTP method (e.g. GET, POST)
-     * @param path        the path requested
-     * @param pathVarsOut to hold the extracted path variables
+     * @param path        the actual path requested
+     * @param pathVarsOut a map to store extracted path variables
      * @return the matching handler or null if not found
      */
     public JavelinHandler findHandler(String method, String path, Map<String, String> pathVarsOut) {
-        for (Map.Entry<String, JavelinHandler> entry : routes.entrySet()) {
-            String routeKey = entry.getKey();
-            String[] parts = routeKey.split(" ", 2); // "GET /path" -> ["GET", "/path"]
-            if (parts.length != 2) continue;
+        // We'll iterate over routes map entries
+        for (Map.Entry<String, Route> entry : routes.entrySet()) {
+            String routeKey = entry.getKey(); // e.g. "GET ^/users/(?<id>[^/]+)/?$"
+            String[] keyParts = routeKey.split(" ", 2);
+            if (keyParts.length < 2) continue;
 
-            String routeMethod = parts[0];
-            String routePath = parts[1];
+            String routeMethod = keyParts[0];
+            // The rest is a compiledRegex string
+            String compiledRegex = keyParts[1];
+            Route route = entry.getValue();
 
             if (!routeMethod.equalsIgnoreCase(method)) continue;
 
-            // 경로에서 변수 이름을 추출하고, 해당 변수값을 pathVarsOut에 추가
-            Matcher matcher = Pattern.compile(routePath).matcher(path);
+            Matcher matcher = Pattern.compile(compiledRegex).matcher(path);
             if (matcher.matches()) {
-                List<String> paramNames = getParamNamesFromPath(routePath);
-                for (String name : paramNames) {
-                    pathVarsOut.put(name, matcher.group(name));
+                // put extracted vars
+                for (String param : route.paramNames) {
+                    pathVarsOut.put(param, matcher.group(param));
                 }
-                return entry.getValue();
+                return route.handler;
             }
         }
         return null;
     }
 
-    /**
-     * Registers a route with a handler (e.g., GET /users).
-     */
+    // ========== Internal registration logic ==========
+
     private void addRoute(String method, String pathPattern, JavelinHandler handler) {
-        // routeKey = "GET /users/{id}" 형식으로 경로와 메서드를 조합하여 Map에 저장
-        String routeKey = method + " " + pathPattern;
-        routes.put(routeKey, handler);
+        // Convert pathPattern, e.g. "/users/{id}" => "^/users/(?<id>[^/]+)/?$"
+        List<String> paramNames = new ArrayList<>();
+        String compiledRegex = convertPathToRegex(pathPattern, paramNames);
+
+        // store as "GET ^/users/(?<id>[^/]+)/?$"
+        String routeKey = method + " " + compiledRegex;
+        routes.put(routeKey, new Route(method, pathPattern, handler, paramNames));
     }
 
-    // Helper method to extract parameter names from path (e.g., "/users/{id}" -> ["id"])
-    private List<String> getParamNamesFromPath(String path) {
-        List<String> paramNames = new ArrayList<>();
-        String[] segments = path.split("/");
-        for (String segment : segments) {
-            if (segment.startsWith("{") && segment.endsWith("}")) {
-                paramNames.add(segment.substring(1, segment.length() - 1));
+    /**
+     * Converts a path pattern with {vars} into a named group regex.
+     * e.g. "/users/{id}" -> "^/users/(?<id>[^/]+)/?$"
+     */
+    private String convertPathToRegex(String pathPattern, List<String> paramNames) {
+        // split on '/'
+        String[] segments = pathPattern.split("/");
+        StringBuilder sb = new StringBuilder("^");
+
+        for (String seg : segments) {
+            if (seg.isEmpty()) continue; // skip leading slash
+
+            sb.append("/");
+            if (seg.startsWith("{") && seg.endsWith("}")) {
+                // a path variable
+                String varName = seg.substring(1, seg.length() - 1);
+                paramNames.add(varName);
+                sb.append("(?<").append(varName).append(">[^/]+)");
+            } else {
+                // normal segment
+                sb.append(Pattern.quote(seg));
             }
         }
-        return paramNames;
+        sb.append("/?$"); // optional trailing slash
+        return sb.toString();
     }
 }

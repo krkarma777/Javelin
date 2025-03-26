@@ -1,5 +1,6 @@
 package com.javelin.core;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -103,4 +104,18 @@ public interface Context {
      * Sets all path variables captured during routing.
      */
     void setPathVars(Map<String, String> vars);
+
+    /**
+     * Sets the chain of middleware for the current request.
+     *
+     * @param chain the list of middleware to apply
+     */
+    void setMiddlewareChain(List<Middleware> chain);
+
+    /**
+     * Sets the final route handler to be invoked after all middleware.
+     *
+     * @param finalHandler the handler to execute at the end of the middleware chain
+     */
+    void setFinalHandler(Runnable finalHandler);
 }

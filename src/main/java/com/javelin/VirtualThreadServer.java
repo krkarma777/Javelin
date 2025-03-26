@@ -13,10 +13,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -27,16 +24,20 @@ import static com.javelin.constants.HttpConstants.HEADER_X_HTTP_METHOD_OVERRIDE;
  * <p>
  * This class is the lightweight foundation of the Javelin framework.
  * It uses Java 21 virtual threads to handle high concurrency workloads efficiently.
- * Designed to be simple, extensible, and performant for modern backend applications.
+ * Designed for simplicity, extensibility, and performance for modern backend applications.
  */
 public class VirtualThreadServer implements WebServer {
     private static final Logger logger = LoggerFactory.getLogger(VirtualThreadServer.class);
 
     private final int port;
-    private final Router router = new Router();
+    private final Router router = new Router();                   // route registry
     private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
     private HttpServer server;
+
+    // Middlewares are executed in order before the final route handler
     private final List<Middleware> middlewares = new ArrayList<>();
+
+    // Global exception handler (default: 500 with simple message)
     private ExceptionHandler exceptionHandler = new DefaultExceptionHandler();
 
     /**
@@ -77,9 +78,11 @@ public class VirtualThreadServer implements WebServer {
      * @param exchange the raw HTTP exchange from com.sun.net.httpserver
      */
     private void handleRequest(HttpExchange exchange) {
+        // Create context for this request
         HttpExchangeContext context = new HttpExchangeContext(exchange);
         context.setMiddlewareChain(middlewares);
 
+        // Possibly override method (PATCH, etc.)
         String method = exchange.getRequestMethod();
         String override = exchange.getRequestHeaders().getFirst(HEADER_X_HTTP_METHOD_OVERRIDE);
         if (override != null && !override.isBlank()) {
@@ -88,12 +91,14 @@ public class VirtualThreadServer implements WebServer {
 
         String path = exchange.getRequestURI().getPath();
 
-        Map<String, String> pathVarsOut = new HashMap<>();
-        JavelinHandler handler = router.findHandler(method, path, pathVarsOut);
+        // For path variables
+        Map<String, String> pathVars = new HashMap<>();
+        JavelinHandler handler = router.findHandler(method, path, pathVars);
 
-        context.setPathVars(pathVarsOut);
+        // Set extracted variables into the context
+        context.setPathVars(pathVars);
 
-        // Route handler or fallback 404
+        // Final route or fallback 404
         context.setFinalHandler(() -> {
             if (handler != null) {
                 try {
@@ -102,11 +107,11 @@ public class VirtualThreadServer implements WebServer {
                     exceptionHandler.handle(e, context);
                 }
             } else {
-                handleNotFound(exchange, context);
+                respondNotFound(exchange, context);
             }
         });
 
-        // Execute middleware chain
+        // Run middleware chain → final handler
         try {
             context.next();
         } catch (Throwable e) {
@@ -117,7 +122,7 @@ public class VirtualThreadServer implements WebServer {
     /**
      * Sends a 404 Not Found response when no route matches.
      */
-    private void handleNotFound(com.sun.net.httpserver.HttpExchange exchange, Context context) {
+    private void respondNotFound(HttpExchange exchange, Context ctx) {
         try (exchange) {
             String notFound = "404 Not Found";
             exchange.sendResponseHeaders(404, notFound.length());
@@ -125,7 +130,7 @@ public class VirtualThreadServer implements WebServer {
                 os.write(notFound.getBytes());
             }
         } catch (IOException e) {
-            exceptionHandler.handle(e, context);
+            exceptionHandler.handle(e, ctx);
         }
     }
 
@@ -196,6 +201,8 @@ public class VirtualThreadServer implements WebServer {
     public void use(Middleware middleware) {
         middlewares.add(middleware);
     }
+
+    // ============= Route registration methods =============
 
     /**
      * Registers a GET route with its handler.
