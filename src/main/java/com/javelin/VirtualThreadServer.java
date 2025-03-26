@@ -17,6 +17,8 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static com.javelin.constants.HttpConstants.HEADER_X_HTTP_METHOD_OVERRIDE;
+
 /**
  * Javelin's core HTTP server implementation using Java Virtual Threads.
  * <p>
@@ -76,6 +78,11 @@ public class VirtualThreadServer implements WebServer {
         context.setMiddlewareChain(middlewares);
 
         String method = exchange.getRequestMethod();
+        String override = exchange.getRequestHeaders().getFirst(HEADER_X_HTTP_METHOD_OVERRIDE);
+        if (override != null && !override.isBlank()) {
+            method = override.toUpperCase();
+        }
+
         String path = exchange.getRequestURI().getPath();
         JavelinHandler handler = router.findHandler(method, path);
 
