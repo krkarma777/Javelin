@@ -1,5 +1,7 @@
 package com.javelin.core;
 
+import java.util.Map;
+
 /**
  * Represents a lightweight abstraction over an HTTP request and response.
  * <p>
@@ -88,4 +90,17 @@ public interface Context {
      * @param value the header value (e.g., "Enabled")
      */
     void setHeader(String name, String value);
+
+    /**
+     * Returns the captured path variable by name.
+     *
+     * @param name the variable name (e.g. "id")
+     * @return the path variable's value, or null if not present
+     */
+    String pathVar(String name);
+
+    /**
+     * Sets all path variables captured during routing.
+     */
+    void setPathVars(Map<String, String> vars);
 }

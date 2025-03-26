@@ -5,6 +5,7 @@ import com.javelin.springBoot.GracefulShutdownCallback;
 import com.javelin.springBoot.GracefulShutdownResult;
 import com.javelin.springBoot.WebServer;
 import com.javelin.springBoot.WebServerException;
+import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,7 +14,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -73,7 +76,7 @@ public class VirtualThreadServer implements WebServer {
      *
      * @param exchange the raw HTTP exchange from com.sun.net.httpserver
      */
-    private void handleRequest(com.sun.net.httpserver.HttpExchange exchange) {
+    private void handleRequest(HttpExchange exchange) {
         HttpExchangeContext context = new HttpExchangeContext(exchange);
         context.setMiddlewareChain(middlewares);
 
@@ -84,7 +87,11 @@ public class VirtualThreadServer implements WebServer {
         }
 
         String path = exchange.getRequestURI().getPath();
-        JavelinHandler handler = router.findHandler(method, path);
+
+        Map<String, String> pathVarsOut = new HashMap<>();
+        JavelinHandler handler = router.findHandler(method, path, pathVarsOut);
+
+        context.setPathVars(pathVarsOut);
 
         // Route handler or fallback 404
         context.setFinalHandler(() -> {
