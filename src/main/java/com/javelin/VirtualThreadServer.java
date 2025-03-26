@@ -1,11 +1,11 @@
 package com.javelin;
 
+import com.javelin.core.JavelinHandler;
+import com.javelin.core.Router;
 import com.javelin.springBoot.GracefulShutdownCallback;
 import com.javelin.springBoot.GracefulShutdownResult;
 import com.javelin.springBoot.WebServer;
 import com.javelin.springBoot.WebServerException;
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,6 +20,7 @@ public class VirtualThreadServer implements WebServer {
     private static final Logger logger = LoggerFactory.getLogger(VirtualThreadServer.class);
 
     private final int port;
+    private final Router router = new Router();
     private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
     private HttpServer server;
 
@@ -32,25 +33,38 @@ public class VirtualThreadServer implements WebServer {
         try {
             server = HttpServer.create(new InetSocketAddress(port), 0);
 
-            // 기본 "/" 경로 핸들러 등록
-            server.createContext("/", new HttpHandler() {
-                @Override
-                public void handle(HttpExchange exchange) {
-                    // 각 요청을 Virtual Thread에서 처리
-                    executor.submit(() -> {
-                        try (exchange) {
-                            String response = "Hello, Virtual Thread!";
-                            exchange.sendResponseHeaders(200, response.getBytes().length);
-                            try (OutputStream os = exchange.getResponseBody()) {
-                                os.write(response.getBytes());
+            server.createContext("/", exchange -> {
+                executor.submit(() -> {
+                    Thread.startVirtualThread(() -> {
+                        String method = exchange.getRequestMethod();
+                        String path = exchange.getRequestURI().getPath();
+
+                        JavelinHandler handler = router.findHandler(method, path);
+
+                        if (handler != null) {
+                            try {
+                                handler.handle(new HttpExchangeContext(exchange));
+                            } catch (Exception e) {
+                                e.printStackTrace(); // 나중에 에러 핸들러로 뺄 수 있음
                             }
-                            logger.info("Request processed successfully.");
-                        } catch (IOException e) {
-                            logger.error("Error processing request", e);
+                        } else {
+                            // 404 처리
+                            try {
+                                String notFound = "404 Not Found";
+                                exchange.sendResponseHeaders(404, notFound.length());
+                                try (OutputStream os = exchange.getResponseBody()) {
+                                    os.write(notFound.getBytes());
+                                }
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            } finally {
+                                exchange.close();
+                            }
                         }
                     });
-                }
+                });
             });
+
 
             // HttpServer에 executor 지정
             server.setExecutor(executor);
@@ -107,5 +121,13 @@ public class VirtualThreadServer implements WebServer {
             executor.shutdown();
             logger.info("Executor service shut down.");
         }
+    }
+
+    public void get(String path, JavelinHandler handler) {
+        router.get(path, handler);
+    }
+
+    public void post(String path, JavelinHandler handler) {
+        router.post(path, handler);
     }
 }
