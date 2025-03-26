@@ -88,13 +88,12 @@ public class VirtualThreadServer implements WebServer {
 
         String path = exchange.getRequestURI().getPath();
 
-        // 새로 만들 Map
         Map<String, String> pathVarsOut = new HashMap<>();
         JavelinHandler handler = router.findHandler(method, path, pathVarsOut);
 
-        // pathVarsOut을 context에 세팅
         context.setPathVars(pathVarsOut);
 
+        // Route handler or fallback 404
         context.setFinalHandler(() -> {
             if (handler != null) {
                 try {
@@ -107,6 +106,7 @@ public class VirtualThreadServer implements WebServer {
             }
         });
 
+        // Execute middleware chain
         try {
             context.next();
         } catch (Throwable e) {
