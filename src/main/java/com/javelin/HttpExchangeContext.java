@@ -1,5 +1,6 @@
 package com.javelin;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.javelin.core.Context;
 import com.sun.net.httpserver.HttpExchange;
 
@@ -11,6 +12,7 @@ import java.util.Map;
 public class HttpExchangeContext implements Context {
     private final HttpExchange exchange;
     private final Map<String, String> queryParams;
+    private static final ObjectMapper mapper = new ObjectMapper();
 
     public HttpExchangeContext(HttpExchange exchange) {
         this.exchange = exchange;
@@ -61,6 +63,22 @@ public class HttpExchangeContext implements Context {
             return java.net.URLDecoder.decode(value, java.nio.charset.StandardCharsets.UTF_8);
         } catch (Exception e) {
             return value;
+        }
+    }
+
+    @Override
+    public void json(Object data) {
+        try {
+            byte[] json = mapper.writeValueAsBytes(data);
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, json.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(json);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            exchange.close();
         }
     }
 }
