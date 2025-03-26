@@ -13,9 +13,11 @@ public final class HttpConstants {
 
     // Common HTTP headers
     public static final String HEADER_CONTENT_TYPE = "Content-Type";
+    public static final String HEADER_CONTENT_LENGTH = "Content-Length";
     public static final String HEADER_AUTHORIZATION = "Authorization";
     public static final String HEADER_ACCEPT = "Accept";
     public static final String HEADER_USER_AGENT = "User-Agent";
+    public static final String HEADER_X_HTTP_METHOD_OVERRIDE = "X-HTTP-Method-Override";
 
     // Common content types
     public static final String APPLICATION_JSON = "application/json";

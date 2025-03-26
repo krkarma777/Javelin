@@ -1,7 +1,6 @@
 package com.javelin.core;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.javelin.constants.HttpConstants;
 import com.sun.net.httpserver.HttpExchange;
 
 import java.io.IOException;
@@ -10,6 +9,8 @@ import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static com.javelin.constants.HttpConstants.*;
 
 /**
  * Implementation of {@link Context} based on Java's built-in {@link HttpExchange}.
@@ -77,7 +78,8 @@ public class HttpExchangeContext implements Context {
             String method = exchange.getRequestMethod();
             byte[] bytes = body.getBytes();
 
-            if (HttpConstants.METHOD_HEAD.equalsIgnoreCase(method)) {
+            if (METHOD_HEAD.equalsIgnoreCase(method)) {
+                exchange.getResponseHeaders().set(HEADER_CONTENT_LENGTH, "0");
                 exchange.sendResponseHeaders(statusCode, 0);
             } else {
                 exchange.sendResponseHeaders(statusCode, bytes.length);
@@ -114,7 +116,7 @@ public class HttpExchangeContext implements Context {
     public void json(Object data) {
         try {
             byte[] json = mapper.writeValueAsBytes(data);
-            exchange.getResponseHeaders().set(HttpConstants.HEADER_CONTENT_TYPE, HttpConstants.APPLICATION_JSON);
+            exchange.getResponseHeaders().set(HEADER_CONTENT_TYPE, APPLICATION_JSON);
             exchange.sendResponseHeaders(statusCode, json.length);
             try (OutputStream os = exchange.getResponseBody()) {
                 os.write(json);
