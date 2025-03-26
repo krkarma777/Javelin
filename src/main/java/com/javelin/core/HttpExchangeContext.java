@@ -1,6 +1,7 @@
 package com.javelin.core;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.javelin.constants.HttpConstants;
 import com.sun.net.httpserver.HttpExchange;
 
 import java.io.IOException;
@@ -76,7 +77,7 @@ public class HttpExchangeContext implements Context {
             String method = exchange.getRequestMethod();
             byte[] bytes = body.getBytes();
 
-            if ("HEAD".equalsIgnoreCase(method)) {
+            if (HttpConstants.METHOD_HEAD.equalsIgnoreCase(method)) {
                 exchange.sendResponseHeaders(statusCode, 0);
             } else {
                 exchange.sendResponseHeaders(statusCode, bytes.length);
@@ -113,7 +114,7 @@ public class HttpExchangeContext implements Context {
     public void json(Object data) {
         try {
             byte[] json = mapper.writeValueAsBytes(data);
-            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.getResponseHeaders().set(HttpConstants.HEADER_CONTENT_TYPE, HttpConstants.APPLICATION_JSON);
             exchange.sendResponseHeaders(statusCode, json.length);
             try (OutputStream os = exchange.getResponseBody()) {
                 os.write(json);
