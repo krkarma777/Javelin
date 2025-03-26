@@ -1,8 +1,6 @@
-package com.javelin;
+package com.javelin.core;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.javelin.core.Context;
-import com.javelin.core.Middleware;
 import com.sun.net.httpserver.HttpExchange;
 
 import java.io.IOException;
@@ -26,14 +24,7 @@ public class HttpExchangeContext implements Context {
     private List<Middleware> middlewareChain;
     private Runnable finalHandler;
     private int currentIndex = -1;
-
-    public void setMiddlewareChain(List<Middleware> chain) {
-        this.middlewareChain = chain;
-    }
-
-    public void setFinalHandler(Runnable finalHandler) {
-        this.finalHandler = finalHandler;
-    }
+    private int statusCode = 200;
 
     /**
      * Constructs a new context based on the provided {@code HttpExchange}.
@@ -43,6 +34,24 @@ public class HttpExchangeContext implements Context {
     public HttpExchangeContext(HttpExchange exchange) {
         this.exchange = exchange;
         this.queryParams = parseQueryParams(exchange.getRequestURI().getRawQuery());
+    }
+
+    /**
+     * Sets the chain of middleware for the current request.
+     *
+     * @param chain the list of middleware to apply
+     */
+    public void setMiddlewareChain(List<Middleware> chain) {
+        this.middlewareChain = chain;
+    }
+
+    /**
+     * Sets the final route handler to be invoked after all middleware.
+     *
+     * @param finalHandler the handler to execute at the end of the middleware chain
+     */
+    public void setFinalHandler(Runnable finalHandler) {
+        this.finalHandler = finalHandler;
     }
 
     /**
@@ -56,7 +65,7 @@ public class HttpExchangeContext implements Context {
     }
 
     /**
-     * Sends a plain text response with status 200.
+     * Sends a plain text response with the currently set HTTP status.
      * This also closes the exchange.
      *
      * @param body the response body as plain text
@@ -65,7 +74,7 @@ public class HttpExchangeContext implements Context {
     public void send(String body) {
         try {
             byte[] bytes = body.getBytes();
-            exchange.sendResponseHeaders(200, bytes.length);
+            exchange.sendResponseHeaders(statusCode, bytes.length);
             try (OutputStream os = exchange.getResponseBody()) {
                 os.write(bytes);
             }
@@ -88,7 +97,7 @@ public class HttpExchangeContext implements Context {
     }
 
     /**
-     * Sends a JSON response with status 200.
+     * Sends a JSON response with the currently set HTTP status.
      * Sets {@code Content-Type: application/json}.
      * This also closes the exchange.
      *
@@ -99,7 +108,7 @@ public class HttpExchangeContext implements Context {
         try {
             byte[] json = mapper.writeValueAsBytes(data);
             exchange.getResponseHeaders().set("Content-Type", "application/json");
-            exchange.sendResponseHeaders(200, json.length);
+            exchange.sendResponseHeaders(statusCode, json.length);
             try (OutputStream os = exchange.getResponseBody()) {
                 os.write(json);
             }
@@ -114,11 +123,58 @@ public class HttpExchangeContext implements Context {
      * Returns the value of a request header.
      *
      * @param name header name (case-insensitive)
-     * @return the header value or null if not present
+     * @return the header value or {@code null} if not present
      */
     @Override
     public String header(String name) {
         return exchange.getRequestHeaders().getFirst(name);
+    }
+
+    /**
+     * Sets the HTTP status code for the response.
+     * This must be called before sending the response.
+     *
+     * @param code the HTTP status code (e.g., 200, 404, 500)
+     */
+    @Override
+    public void status(int code) {
+        this.statusCode = code;
+    }
+
+    /**
+     * Proceeds to the next middleware in the chain, or the final route handler.
+     * <p>
+     * This method is used to control the flow in middleware chains.
+     * It calls the next middleware in order, and once all middleware have been executed,
+     * the final route handler (if present) is invoked.
+     *
+     * @throws Exception if any middleware or the final handler throws
+     */
+    @Override
+    public void next() throws Exception {
+        currentIndex++;
+        if (middlewareChain != null && currentIndex < middlewareChain.size()) {
+            middlewareChain.get(currentIndex).handle(this);
+        } else if (finalHandler != null) {
+            finalHandler.run();
+        }
+    }
+
+    /**
+     * Parses the HTTP request body as JSON into the given class type.
+     *
+     * @param clazz the class to deserialize the request body into
+     * @param <T>   the type of the expected object
+     * @return the deserialized object
+     * @throws RuntimeException if the body cannot be parsed
+     */
+    @Override
+    public <T> T body(Class<T> clazz) {
+        try (InputStream is = exchange.getRequestBody()) {
+            return mapper.readValue(is, clazz);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to parse request body", e);
+        }
     }
 
     /**
@@ -139,42 +195,6 @@ public class HttpExchangeContext implements Context {
         }
 
         return result;
-    }
-
-    /**
-     * Proceeds to the next middleware in the chain, or the final route handler.
-     * <p>
-     * This method is used to control the flow in middleware chains.
-     * It calls the next middleware in order, and once all middleware have been executed,
-     * the final route handler (if present) is invoked.
-     *
-     * @throws Exception if any middleware or the final handler throws
-     */
-    @Override
-    public void next() throws Exception {
-        currentIndex++;
-        if (middlewareChain != null && currentIndex < middlewareChain.size()) {
-            middlewareChain.get(currentIndex).handle(this);
-        } else if (finalHandler != null) {
-            finalHandler.run(); // 마지막 실제 라우터 핸들러
-        }
-    }
-
-    /**
-     * Parses the HTTP request body as JSON into the given class type.
-     *
-     * @param clazz the class to deserialize the request body into
-     * @param <T> the type of the expected object
-     * @return the deserialized object
-     * @throws RuntimeException if the body cannot be parsed
-     */
-    @Override
-    public <T> T body(Class<T> clazz) {
-        try (InputStream is = exchange.getRequestBody()) {
-            return mapper.readValue(is, clazz);
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to parse request body", e);
-        }
     }
 
     /**

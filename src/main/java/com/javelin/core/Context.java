@@ -73,4 +73,11 @@ public interface Context {
      * @param <T> the type of object to return
      */
     <T> T body(Class<T> clazz);
+
+    /**
+     * Sets the HTTP status code for the response.
+     *
+     * @param code the HTTP status code (e.g., 200, 400, 500)
+     */
+    void status(int code);
 }

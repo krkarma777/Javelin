@@ -1,5 +1,6 @@
 package com.javelin;
 
+import com.javelin.core.HttpExchangeContext;
 import com.javelin.core.JavelinHandler;
 import com.javelin.core.Middleware;
 import com.javelin.core.Router;
