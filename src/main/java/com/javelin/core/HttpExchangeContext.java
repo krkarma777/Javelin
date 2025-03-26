@@ -187,6 +187,17 @@ public class HttpExchangeContext implements Context {
     }
 
     /**
+     * Sets a response header before sending the response.
+     *
+     * @param name  the header name
+     * @param value the header value
+     */
+    @Override
+    public void setHeader(String name, String value) {
+        exchange.getResponseHeaders().set(name, value);
+    }
+
+    /**
      * Parses query parameters from the raw query string.
      *
      * @param rawQuery the raw query string (e.g. {@code "id=1&name=abc"})

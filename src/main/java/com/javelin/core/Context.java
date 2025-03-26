@@ -80,4 +80,12 @@ public interface Context {
      * @param code the HTTP status code (e.g., 200, 400, 500)
      */
     void status(int code);
+
+    /**
+     * Sets a response header before the response is sent.
+     *
+     * @param name  the header name (e.g., "X-Custom-Header")
+     * @param value the header value (e.g., "Enabled")
+     */
+    void setHeader(String name, String value);
 }

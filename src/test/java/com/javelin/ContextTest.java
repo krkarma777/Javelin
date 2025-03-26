@@ -65,6 +65,20 @@ public class ContextTest {
         assertTrue(response.contains("\"name\":\"Javelin\""));
     }
 
+    @Test
+    void testCustomHeaderSet() throws Exception {
+        server.get("/header", ctx -> {
+            ctx.setHeader("X-Test", "OK");
+            ctx.send("Header sent");
+        });
+
+        HttpURLConnection conn = (HttpURLConnection) new URL("http://localhost:8080/header").openConnection();
+        conn.setRequestMethod("GET");
+
+        assertEquals(200, conn.getResponseCode());
+        assertEquals("OK", conn.getHeaderField("X-Test"));
+    }
+
     // ===================== 유틸 =====================
 
     private static HttpURLConnection openGetConnection(String urlStr) throws IOException {
