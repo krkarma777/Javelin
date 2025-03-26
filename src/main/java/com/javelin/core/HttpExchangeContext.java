@@ -224,6 +224,27 @@ public class HttpExchangeContext implements Context {
         }
     }
 
+    @Override
+    public void sendBytes(byte[] data) {
+        try {
+            String method = exchange.getRequestMethod();
+            if (METHOD_HEAD.equalsIgnoreCase(method)) {
+                exchange.getResponseHeaders().set(HEADER_CONTENT_LENGTH, "0");
+                exchange.sendResponseHeaders(statusCode, 0);
+            } else {
+                exchange.sendResponseHeaders(statusCode, data.length);
+                try (OutputStream os = exchange.getResponseBody()) {
+                    os.write(data);
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            exchange.close();
+        }
+    }
+
+
     // ========== Internal Helpers ==========
 
     /**

@@ -63,7 +63,7 @@ public class StaticFileHandler implements Middleware {
 
         try {
             byte[] data = Files.readAllBytes(filePath);
-            ctx.send(new String(data)); // 추후 sendBytes 생기면 교체 가능
+            ctx.sendBytes(data);
         } catch (IOException e) {
             serve404(ctx);
         }

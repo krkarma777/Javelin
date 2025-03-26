@@ -118,4 +118,12 @@ public interface Context {
      * @param finalHandler the handler to execute at the end of the middleware chain
      */
     void setFinalHandler(Runnable finalHandler);
+    
+    /**
+     * Sends a raw byte[] response to the client.
+     * This also ends the exchange.
+     *
+     * @param data the raw bytes to send
+     */
+    void sendBytes(byte[] data);
 }
