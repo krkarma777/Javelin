@@ -41,4 +41,12 @@ public interface Context {
      * @param data the object to serialize as JSON
      */
     void json(Object data);
+
+    /**
+     * Returns the value of a request header.
+     *
+     * @param name header name (case-insensitive)
+     * @return the header value or null if not present
+     */
+    String header(String name);
 }

@@ -97,6 +97,17 @@ public class HttpExchangeContext implements Context {
     }
 
     /**
+     * Returns the value of a request header.
+     *
+     * @param name header name (case-insensitive)
+     * @return the header value or null if not present
+     */
+    @Override
+    public String header(String name) {
+        return exchange.getRequestHeaders().getFirst(name);
+    }
+
+    /**
      * Parses query parameters from the raw query string.
      *
      * @param rawQuery the raw query string (e.g. {@code "id=1&name=abc"})
