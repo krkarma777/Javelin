@@ -64,4 +64,13 @@ public interface Context {
      * @throws Exception if the next handler throws
      */
     void next() throws Exception;
+
+    /**
+     * Parses the request body into a Java object of the specified type.
+     *
+     * @param clazz the class to deserialize into
+     * @return the parsed object
+     * @param <T> the type of object to return
+     */
+    <T> T body(Class<T> clazz);
 }
