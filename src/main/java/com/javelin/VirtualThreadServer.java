@@ -1,6 +1,7 @@
 package com.javelin;
 
 import com.javelin.core.JavelinHandler;
+import com.javelin.core.Middleware;
 import com.javelin.core.Router;
 import com.javelin.springBoot.GracefulShutdownCallback;
 import com.javelin.springBoot.GracefulShutdownResult;
@@ -13,14 +14,16 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
  * Javelin's core HTTP server implementation using Java Virtual Threads.
  * <p>
- * Provides a minimal, high-concurrency alternative to traditional WAS systems
- * like Tomcat or Jetty.
+ * Provides a lightweight, high-concurrency alternative to traditional WAS systems
+ * like Tomcat or Jetty. Designed for simplicity, performance, and extensibility.
  */
 public class VirtualThreadServer implements WebServer {
     private static final Logger logger = LoggerFactory.getLogger(VirtualThreadServer.class);
@@ -29,6 +32,7 @@ public class VirtualThreadServer implements WebServer {
     private final Router router = new Router();
     private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Virtual Thread 기반 실행기
     private HttpServer server;
+    private final List<Middleware> middlewares = new ArrayList<>();
 
     /**
      * Creates a new VirtualThreadServer listening on the given port.
@@ -50,34 +54,45 @@ public class VirtualThreadServer implements WebServer {
             server.createContext("/", exchange -> {
                 executor.submit(() -> {
                     Thread.startVirtualThread(() -> {
+                        HttpExchangeContext context = new HttpExchangeContext(exchange);
+                        context.setMiddlewareChain(middlewares);
+
                         String method = exchange.getRequestMethod();
                         String path = exchange.getRequestURI().getPath();
-
                         JavelinHandler handler = router.findHandler(method, path);
 
-                        if (handler != null) {
-                            try {
-                                handler.handle(new HttpExchangeContext(exchange));
-                            } catch (Exception e) {
-                                e.printStackTrace(); // TODO: Custom error handler
-                            }
-                        } else {
-                            // 404 처리
-                            try {
-                                String notFound = "404 Not Found";
-                                exchange.sendResponseHeaders(404, notFound.length());
-                                try (OutputStream os = exchange.getResponseBody()) {
-                                    os.write(notFound.getBytes());
+                        context.setFinalHandler(() -> {
+                            if (handler != null) {
+                                try {
+                                    handler.handle(context);
+                                } catch (Exception e) {
+                                    e.printStackTrace();
                                 }
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            } finally {
-                                exchange.close();
+                            } else {
+                                try {
+                                    // No matching route found – respond with 404
+                                    String notFound = "404 Not Found";
+                                    exchange.sendResponseHeaders(404, notFound.length());
+                                    try (OutputStream os = exchange.getResponseBody()) {
+                                        os.write(notFound.getBytes());
+                                    }
+                                } catch (IOException e) {
+                                    e.printStackTrace();
+                                } finally {
+                                    exchange.close();
+                                }
                             }
+                        });
+
+                        try {
+                            context.next();
+                        } catch (Exception e) {
+                            e.printStackTrace();
                         }
                     });
                 });
             });
+
 
             server.setExecutor(executor);
             server.start();
@@ -140,6 +155,15 @@ public class VirtualThreadServer implements WebServer {
             executor.shutdown();
             logger.info("Executor service shut down.");
         }
+    }
+
+    /**
+     * Registers a global middleware to be executed before all route handlers.
+     *
+     * @param middleware the middleware instance to add to the execution chain
+     */
+    public void use(Middleware middleware) {
+        middlewares.add(middleware);
     }
 
     /**
