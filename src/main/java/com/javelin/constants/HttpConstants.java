@@ -50,5 +50,6 @@ public final class HttpConstants {
     public static final String IMAGE_JPEG = "image/jpeg";
     public static final String IMAGE_GIF = "image/gif";
     public static final String IMAGE_SVG = "image/svg+xml";
+    public static final String TEXT_TXT = "text/plain";
     public static final String APPLICATION_OCTET_STREAM = "application/octet-stream";
 }

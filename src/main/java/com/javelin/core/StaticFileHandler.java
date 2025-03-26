@@ -1,13 +1,9 @@
-package com.javelin.middleware;
-
-import com.javelin.core.Context;
-import com.javelin.core.Middleware;
+package com.javelin.core;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
 import java.util.Map;
 
 import static com.javelin.constants.HttpConstants.*;
@@ -88,6 +84,7 @@ public class StaticFileHandler implements Middleware {
             ".html", TEXT_HTML,
             ".css", TEXT_CSS,
             ".js", TEXT_JS,
+            ".txt", TEXT_TXT,
             ".png", IMAGE_PNG,
             ".jpg", IMAGE_JPEG,
             ".jpeg", IMAGE_JPEG,
