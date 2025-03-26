@@ -204,6 +204,46 @@ public class VirtualThreadServer implements WebServer {
     }
 
     /**
+     * Registers a PUT route.
+     *
+     * @param path    the request path (e.g. {@code "/update"})
+     * @param handler the handler to execute
+     */
+    public void put(String path, JavelinHandler handler) {
+        router.put(path, handler);
+    }
+
+    /**
+     * Registers a DELETE route.
+     *
+     * @param path    the request path (e.g. {@code "/delete"})
+     * @param handler the handler to execute
+     */
+    public void delete(String path, JavelinHandler handler) {
+        router.delete(path, handler);
+    }
+
+    /**
+     * Registers a PATCH route.
+     *
+     * @param path    the request path (e.g. {@code "/modify"})
+     * @param handler the handler to execute
+     */
+    public void patch(String path, JavelinHandler handler) {
+        router.patch(path, handler);
+    }
+
+    /**
+     * Registers a HEAD route.
+     *
+     * @param path    the request path (e.g. {@code "/ping"})
+     * @param handler the handler to execute
+     */
+    public void head(String path, JavelinHandler handler) {
+        router.head(path, handler);
+    }
+
+    /**
      * Sets a global exception handler to handle uncaught exceptions in request processing.
      *
      * @param handler the exception handler to use
