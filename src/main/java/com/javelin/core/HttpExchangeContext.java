@@ -10,6 +10,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static com.javelin.constants.HttpConstants.*;
+
 /**
  * Implementation of {@link Context} based on Java's built-in {@link HttpExchange}.
  * <p>
@@ -73,10 +75,17 @@ public class HttpExchangeContext implements Context {
     @Override
     public void send(String body) {
         try {
+            String method = exchange.getRequestMethod();
             byte[] bytes = body.getBytes();
-            exchange.sendResponseHeaders(statusCode, bytes.length);
-            try (OutputStream os = exchange.getResponseBody()) {
-                os.write(bytes);
+
+            if (METHOD_HEAD.equalsIgnoreCase(method)) {
+                exchange.getResponseHeaders().set(HEADER_CONTENT_LENGTH, "0");
+                exchange.sendResponseHeaders(statusCode, 0);
+            } else {
+                exchange.sendResponseHeaders(statusCode, bytes.length);
+                try (OutputStream os = exchange.getResponseBody()) {
+                    os.write(bytes);
+                }
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -107,7 +116,7 @@ public class HttpExchangeContext implements Context {
     public void json(Object data) {
         try {
             byte[] json = mapper.writeValueAsBytes(data);
-            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.getResponseHeaders().set(HEADER_CONTENT_TYPE, APPLICATION_JSON);
             exchange.sendResponseHeaders(statusCode, json.length);
             try (OutputStream os = exchange.getResponseBody()) {
                 os.write(json);

@@ -4,20 +4,18 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Simple HTTP method-based router for Javelin.
+ * Javelin's routing system for mapping HTTP methods and paths to handlers.
  * <p>
- * Internally uses a concurrent map with keys formatted as {@code "METHOD /path"}.
- * For example: {@code "GET /users"} or {@code "POST /login"}.
+ * Internally uses a thread-safe {@link ConcurrentHashMap} to register and lookup routes.
  */
 public class Router {
-
     private final Map<String, JavelinHandler> routes = new ConcurrentHashMap<>();
 
     /**
      * Registers a GET route.
      *
-     * @param path    the route path (e.g. {@code "/users"})
-     * @param handler the handler to execute when the route is matched
+     * @param path    the route path (e.g. "/users")
+     * @param handler the handler to execute for this route
      */
     public void get(String path, JavelinHandler handler) {
         routes.put("GET " + path, handler);
@@ -25,20 +23,45 @@ public class Router {
 
     /**
      * Registers a POST route.
-     *
-     * @param path    the route path (e.g. {@code "/submit"})
-     * @param handler the handler to execute when the route is matched
      */
     public void post(String path, JavelinHandler handler) {
         routes.put("POST " + path, handler);
     }
 
     /**
-     * Looks up a registered handler for the given HTTP method and path.
+     * Registers a PUT route.
+     */
+    public void put(String path, JavelinHandler handler) {
+        routes.put("PUT " + path, handler);
+    }
+
+    /**
+     * Registers a DELETE route.
+     */
+    public void delete(String path, JavelinHandler handler) {
+        routes.put("DELETE " + path, handler);
+    }
+
+    /**
+     * Registers a PATCH route.
+     */
+    public void patch(String path, JavelinHandler handler) {
+        routes.put("PATCH " + path, handler);
+    }
+
+    /**
+     * Registers a HEAD route.
+     */
+    public void head(String path, JavelinHandler handler) {
+        routes.put("HEAD " + path, handler);
+    }
+
+    /**
+     * Finds the appropriate handler based on HTTP method and path.
      *
-     * @param method the HTTP method (e.g. {@code "GET"}, {@code "POST"})
-     * @param path   the request path
-     * @return the matching handler, or {@code null} if no match found
+     * @param method HTTP method (e.g. GET, POST)
+     * @param path   the path requested
+     * @return the matching handler or null if not found
      */
     public JavelinHandler findHandler(String method, String path) {
         return routes.get(method + " " + path);

@@ -17,6 +17,8 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static com.javelin.constants.HttpConstants.HEADER_X_HTTP_METHOD_OVERRIDE;
+
 /**
  * Javelin's core HTTP server implementation using Java Virtual Threads.
  * <p>
@@ -76,6 +78,11 @@ public class VirtualThreadServer implements WebServer {
         context.setMiddlewareChain(middlewares);
 
         String method = exchange.getRequestMethod();
+        String override = exchange.getRequestHeaders().getFirst(HEADER_X_HTTP_METHOD_OVERRIDE);
+        if (override != null && !override.isBlank()) {
+            method = override.toUpperCase();
+        }
+
         String path = exchange.getRequestURI().getPath();
         JavelinHandler handler = router.findHandler(method, path);
 
@@ -201,6 +208,46 @@ public class VirtualThreadServer implements WebServer {
      */
     public void post(String path, JavelinHandler handler) {
         router.post(path, handler);
+    }
+
+    /**
+     * Registers a PUT route.
+     *
+     * @param path    the request path (e.g. {@code "/update"})
+     * @param handler the handler to execute
+     */
+    public void put(String path, JavelinHandler handler) {
+        router.put(path, handler);
+    }
+
+    /**
+     * Registers a DELETE route.
+     *
+     * @param path    the request path (e.g. {@code "/delete"})
+     * @param handler the handler to execute
+     */
+    public void delete(String path, JavelinHandler handler) {
+        router.delete(path, handler);
+    }
+
+    /**
+     * Registers a PATCH route.
+     *
+     * @param path    the request path (e.g. {@code "/modify"})
+     * @param handler the handler to execute
+     */
+    public void patch(String path, JavelinHandler handler) {
+        router.patch(path, handler);
+    }
+
+    /**
+     * Registers a HEAD route.
+     *
+     * @param path    the request path (e.g. {@code "/ping"})
+     * @param handler the handler to execute
+     */
+    public void head(String path, JavelinHandler handler) {
+        router.head(path, handler);
     }
 
     /**
