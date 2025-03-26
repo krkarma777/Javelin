@@ -23,6 +23,7 @@ public class HttpExchangeContext implements Context {
     private final HttpExchange exchange;
     private final Map<String, String> queryParams;
     private static final ObjectMapper mapper = new ObjectMapper();
+    private Map<String, String> pathVars = new HashMap<>();
     private List<Middleware> middlewareChain;
     private Runnable finalHandler;
     private int currentIndex = -1;
@@ -195,6 +196,16 @@ public class HttpExchangeContext implements Context {
     @Override
     public void setHeader(String name, String value) {
         exchange.getResponseHeaders().set(name, value);
+    }
+
+    @Override
+    public String pathVar(String name) {
+        return pathVars.get(name);
+    }
+
+    @Override
+    public void setPathVars(Map<String, String> vars) {
+        this.pathVars.putAll(vars);
     }
 
     /**
