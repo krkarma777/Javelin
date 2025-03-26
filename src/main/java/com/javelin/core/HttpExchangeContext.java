@@ -73,10 +73,16 @@ public class HttpExchangeContext implements Context {
     @Override
     public void send(String body) {
         try {
+            String method = exchange.getRequestMethod();
             byte[] bytes = body.getBytes();
-            exchange.sendResponseHeaders(statusCode, bytes.length);
-            try (OutputStream os = exchange.getResponseBody()) {
-                os.write(bytes);
+
+            if ("HEAD".equalsIgnoreCase(method)) {
+                exchange.sendResponseHeaders(statusCode, 0);
+            } else {
+                exchange.sendResponseHeaders(statusCode, bytes.length);
+                try (OutputStream os = exchange.getResponseBody()) {
+                    os.write(bytes);
+                }
             }
         } catch (IOException e) {
             e.printStackTrace();
