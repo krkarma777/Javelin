@@ -1,6 +1,7 @@
 package com.javelin;
 
 import com.javelin.core.Context;
+import com.javelin.core.HttpExchangeContext;
 import com.sun.net.httpserver.HttpExchange;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
