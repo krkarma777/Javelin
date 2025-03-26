@@ -2,11 +2,13 @@ package com.javelin;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.javelin.core.Context;
+import com.javelin.core.Middleware;
 import com.sun.net.httpserver.HttpExchange;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -20,6 +22,17 @@ public class HttpExchangeContext implements Context {
     private final HttpExchange exchange;
     private final Map<String, String> queryParams;
     private static final ObjectMapper mapper = new ObjectMapper();
+    private List<Middleware> middlewareChain;
+    private Runnable finalHandler;
+    private int currentIndex = -1;
+
+    public void setMiddlewareChain(List<Middleware> chain) {
+        this.middlewareChain = chain;
+    }
+
+    public void setFinalHandler(Runnable finalHandler) {
+        this.finalHandler = finalHandler;
+    }
 
     /**
      * Constructs a new context based on the provided {@code HttpExchange}.
@@ -125,6 +138,25 @@ public class HttpExchangeContext implements Context {
         }
 
         return result;
+    }
+
+    /**
+     * Proceeds to the next middleware in the chain, or the final route handler.
+     * <p>
+     * This method is used to control the flow in middleware chains.
+     * It calls the next middleware in order, and once all middleware have been executed,
+     * the final route handler (if present) is invoked.
+     *
+     * @throws Exception if any middleware or the final handler throws
+     */
+    @Override
+    public void next() throws Exception {
+        currentIndex++;
+        if (middlewareChain != null && currentIndex < middlewareChain.size()) {
+            middlewareChain.get(currentIndex).handle(this);
+        } else if (finalHandler != null) {
+            finalHandler.run(); // 마지막 실제 라우터 핸들러
+        }
     }
 
     /**

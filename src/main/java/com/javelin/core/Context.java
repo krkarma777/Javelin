@@ -43,10 +43,25 @@ public interface Context {
     void json(Object data);
 
     /**
-     * Returns the value of a request header.
+     * Retrieves the value of the specified HTTP request header.
+     * <p>
+     * Header names are case-insensitive according to the HTTP specification.
+     * <p>
+     * For example, {@code header("Authorization")} can retrieve an auth token.
      *
-     * @param name header name (case-insensitive)
-     * @return the header value or null if not present
+     * @param name the name of the request header
+     * @return the header value if present, or {@code null} otherwise
      */
     String header(String name);
+
+    /**
+     * Passes control to the next middleware or route handler in the chain.
+     * <p>
+     * If no further middleware exists, the request will be routed to the matching handler.
+     * <p>
+     * Typically used within middleware to continue processing.
+     *
+     * @throws Exception if the next handler throws
+     */
+    void next() throws Exception;
 }
