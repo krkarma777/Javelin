@@ -1,9 +1,6 @@
 package com.javelin;
 
-import com.javelin.core.HttpExchangeContext;
-import com.javelin.core.JavelinHandler;
-import com.javelin.core.Middleware;
-import com.javelin.core.Router;
+import com.javelin.core.*;
 import com.javelin.springBoot.GracefulShutdownCallback;
 import com.javelin.springBoot.GracefulShutdownResult;
 import com.javelin.springBoot.WebServer;
@@ -23,77 +20,43 @@ import java.util.concurrent.Executors;
 /**
  * Javelin's core HTTP server implementation using Java Virtual Threads.
  * <p>
- * Provides a lightweight, high-concurrency alternative to traditional WAS systems
- * like Tomcat or Jetty. Designed for simplicity, performance, and extensibility.
+ * This class is the lightweight foundation of the Javelin framework.
+ * It uses Java 21 virtual threads to handle high concurrency workloads efficiently.
+ * Designed to be simple, extensible, and performant for modern backend applications.
  */
 public class VirtualThreadServer implements WebServer {
     private static final Logger logger = LoggerFactory.getLogger(VirtualThreadServer.class);
 
     private final int port;
     private final Router router = new Router();
-    private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Virtual Thread 기반 실행기
+    private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
     private HttpServer server;
     private final List<Middleware> middlewares = new ArrayList<>();
+    private ExceptionHandler exceptionHandler = new DefaultExceptionHandler();
 
     /**
-     * Creates a new VirtualThreadServer listening on the given port.
+     * Creates a new VirtualThreadServer instance bound to the given port.
      *
-     * @param port the port to bind the HTTP server to
+     * @param port the port to listen on (e.g. 8080)
      */
     public VirtualThreadServer(int port) {
         this.port = port;
     }
 
     /**
-     * Starts the HTTP server and sets up the routing logic.
+     * Starts the HTTP server, initializes context routing, and begins accepting requests.
      */
     @Override
     public void start() {
         try {
             server = HttpServer.create(new InetSocketAddress(port), 0);
 
-            server.createContext("/", exchange -> {
-                executor.submit(() -> {
-                    Thread.startVirtualThread(() -> {
-                        HttpExchangeContext context = new HttpExchangeContext(exchange);
-                        context.setMiddlewareChain(middlewares);
-
-                        String method = exchange.getRequestMethod();
-                        String path = exchange.getRequestURI().getPath();
-                        JavelinHandler handler = router.findHandler(method, path);
-
-                        context.setFinalHandler(() -> {
-                            if (handler != null) {
-                                try {
-                                    handler.handle(context);
-                                } catch (Exception e) {
-                                    e.printStackTrace();
-                                }
-                            } else {
-                                try {
-                                    // No matching route found – respond with 404
-                                    String notFound = "404 Not Found";
-                                    exchange.sendResponseHeaders(404, notFound.length());
-                                    try (OutputStream os = exchange.getResponseBody()) {
-                                        os.write(notFound.getBytes());
-                                    }
-                                } catch (IOException e) {
-                                    e.printStackTrace();
-                                } finally {
-                                    exchange.close();
-                                }
-                            }
-                        });
-
-                        try {
-                            context.next();
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                    });
-                });
-            });
-
+            // All requests go through this context
+            server.createContext("/", exchange ->
+                    executor.submit(() ->
+                            Thread.startVirtualThread(() -> handleRequest(exchange))
+                    )
+            );
 
             server.setExecutor(executor);
             server.start();
@@ -104,7 +67,56 @@ public class VirtualThreadServer implements WebServer {
     }
 
     /**
-     * Stops the server immediately.
+     * Handles an incoming HTTP request, running middleware and the route handler.
+     *
+     * @param exchange the raw HTTP exchange from com.sun.net.httpserver
+     */
+    private void handleRequest(com.sun.net.httpserver.HttpExchange exchange) {
+        HttpExchangeContext context = new HttpExchangeContext(exchange);
+        context.setMiddlewareChain(middlewares);
+
+        String method = exchange.getRequestMethod();
+        String path = exchange.getRequestURI().getPath();
+        JavelinHandler handler = router.findHandler(method, path);
+
+        // Route handler or fallback 404
+        context.setFinalHandler(() -> {
+            if (handler != null) {
+                try {
+                    handler.handle(context);
+                } catch (Throwable e) {
+                    exceptionHandler.handle(e, context);
+                }
+            } else {
+                handleNotFound(exchange, context);
+            }
+        });
+
+        // Execute middleware chain
+        try {
+            context.next();
+        } catch (Throwable e) {
+            exceptionHandler.handle(e, context);
+        }
+    }
+
+    /**
+     * Sends a 404 Not Found response when no route matches.
+     */
+    private void handleNotFound(com.sun.net.httpserver.HttpExchange exchange, Context context) {
+        try (exchange) {
+            String notFound = "404 Not Found";
+            exchange.sendResponseHeaders(404, notFound.length());
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(notFound.getBytes());
+            }
+        } catch (IOException e) {
+            exceptionHandler.handle(e, context);
+        }
+    }
+
+    /**
+     * Stops the server and releases all resources.
      */
     @Override
     public void stop() throws WebServerException {
@@ -116,7 +128,9 @@ public class VirtualThreadServer implements WebServer {
     }
 
     /**
-     * Returns the actual bound port, useful when using port 0 (auto-assign).
+     * Returns the actual port the server is bound to.
+     *
+     * @return the bound port
      */
     @Override
     public int getPort() {
@@ -127,7 +141,9 @@ public class VirtualThreadServer implements WebServer {
     }
 
     /**
-     * Gracefully shuts down the server with callback support.
+     * Performs a graceful shutdown with callback once completed.
+     *
+     * @param callback the shutdown callback to invoke when done
      */
     @Override
     public void shutDownGracefully(GracefulShutdownCallback callback) {
@@ -135,7 +151,7 @@ public class VirtualThreadServer implements WebServer {
             new Thread(() -> {
                 try {
                     logger.info("Initiating graceful shutdown...");
-                    Thread.sleep(1000); // Give in-flight requests time to finish
+                    Thread.sleep(1000); // let in-flight requests complete
                     stop();
                     callback.shutdownComplete(GracefulShutdownResult.IDLE);
                     logger.info("Graceful shutdown completed.");
@@ -148,7 +164,7 @@ public class VirtualThreadServer implements WebServer {
     }
 
     /**
-     * Shuts down the executor service if not already stopped.
+     * Shuts down internal executor service (usually called from destroy hooks).
      */
     @Override
     public void destroy() {
@@ -159,18 +175,18 @@ public class VirtualThreadServer implements WebServer {
     }
 
     /**
-     * Registers a global middleware to be executed before all route handlers.
+     * Registers a middleware function to be executed for all requests.
      *
-     * @param middleware the middleware instance to add to the execution chain
+     * @param middleware the middleware function
      */
     public void use(Middleware middleware) {
         middlewares.add(middleware);
     }
 
     /**
-     * Registers a GET route.
+     * Registers a GET route with its handler.
      *
-     * @param path    the request path (e.g. {@code "/hello"})
+     * @param path    the path to match (e.g. "/users")
      * @param handler the handler to execute
      */
     public void get(String path, JavelinHandler handler) {
@@ -178,12 +194,21 @@ public class VirtualThreadServer implements WebServer {
     }
 
     /**
-     * Registers a POST route.
+     * Registers a POST route with its handler.
      *
-     * @param path    the request path (e.g. {@code "/submit"})
+     * @param path    the path to match (e.g. "/submit")
      * @param handler the handler to execute
      */
     public void post(String path, JavelinHandler handler) {
         router.post(path, handler);
+    }
+
+    /**
+     * Sets a global exception handler to handle uncaught exceptions in request processing.
+     *
+     * @param handler the exception handler to use
+     */
+    public void setExceptionHandler(ExceptionHandler handler) {
+        this.exceptionHandler = handler;
     }
 }
