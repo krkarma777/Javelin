@@ -15,11 +15,24 @@
  */
 package com.javelin;
 
+import com.javelin.core.StaticFileHandler;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 public class Main {
     public static void main(String[] args) {
         VirtualThreadServer server = new VirtualThreadServer(8080);
 
-        server.get("/", ctx -> ctx.send("Hello from Javelin Virtual Thread WAS!"));
+        server.use(new StaticFileHandler("/static", "public"));
+
+        server.get("/", ctx -> {
+            Path file = Paths.get("public/index.html");
+            String html = Files.readString(file);
+            ctx.setHeader("Content-Type", "text/html");
+            ctx.send(html);
+        });
 
         server.start();
     }
