@@ -1,3 +1,5 @@
+![javelin2](https://github.com/user-attachments/assets/df7d7f88-b268-49ca-b01c-d7c5b3753c34)
+
 # Javelin WAS - A High-Performance Virtual Thread-Based Web Application Server 🚀
 
 Javelin WAS is a lightweight, high-performance web application server built on Java Virtual Threads.  
