@@ -1,4 +1,4 @@
-![javelin2](https://github.com/user-attachments/assets/df7d7f88-b268-49ca-b01c-d7c5b3753c34)
+![javelin2](https://github.com/user-attachments/assets/d776bd23-ce8b-4e39-86c9-49621821c46e)
 
 # Javelin WAS - A High-Performance Virtual Thread-Based Web Application Server 🚀
 
