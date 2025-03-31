@@ -126,4 +126,15 @@ public interface Context {
      * @param data the raw bytes to send
      */
     void sendBytes(byte[] data);
+
+    /**
+     * Retrieves the value of a form parameter from a {@code application/x-www-form-urlencoded} request.
+     * <p>
+     * This method should only be used with POST or PUT requests that submit form data.
+     * If the parameter does not exist or the content type is not supported, {@code null} is returned.
+     *
+     * @param key the form field name
+     * @return the value of the form field, or {@code null} if not present
+     */
+    String formParam(String key);
 }

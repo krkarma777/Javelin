@@ -22,6 +22,7 @@ public class HttpExchangeContext implements Context {
 
     private final HttpExchange exchange;
     private final Map<String, String> queryParams;
+    private Map<String, String> formParams;
 
     // Path variables extracted from router
     private final Map<String, String> pathVars = new HashMap<>();
@@ -244,14 +245,32 @@ public class HttpExchangeContext implements Context {
         }
     }
 
+    /**
+     * Retrieves the value of a form parameter from the request body.
+     * <p>
+     * Only works when the Content-Type is {@code application/x-www-form-urlencoded}.
+     * This method will lazily parse the body only on first access.
+     *
+     * @param key the name of the form field
+     * @return the value of the form field, or {@code null} if not found
+     */
+    @Override
+    public String formParam(String key) {
+        if (formParams == null) {
+            formParams = parseFormParams();
+        }
+        return formParams.get(key);
+    }
 
     // ========== Internal Helpers ==========
 
     /**
-     * Parses query parameters from the raw query string (e.g. "id=1&name=abc").
+     * Parses a query string (or URL-encoded form body) into a map of key-value pairs.
+     * <p>
+     * Keys and values are automatically URL-decoded using UTF-8.
      *
-     * @param rawQuery the raw query (may be null)
-     * @return a map of parameter names and values
+     * @param rawQuery the raw query string (e.g. {@code "id=1&name=test"})
+     * @return a map of parsed parameters
      */
     private Map<String, String> parseQueryParams(String rawQuery) {
         Map<String, String> result = new HashMap<>();
@@ -277,6 +296,25 @@ public class HttpExchangeContext implements Context {
             return java.net.URLDecoder.decode(value, java.nio.charset.StandardCharsets.UTF_8);
         } catch (Exception e) {
             return value;
+        }
+    }
+
+    /**
+     * Parses form-encoded parameters from the request body.
+     * <p>
+     * This applies only to {@code application/x-www-form-urlencoded} requests.
+     *
+     * @return a map of form parameter names and values, or an empty map if not applicable
+     */
+    private Map<String, String> parseFormParams() {
+        if (!"application/x-www-form-urlencoded".equalsIgnoreCase(header("Content-Type"))) {
+            return Map.of();
+        }
+        try (InputStream is = exchange.getRequestBody()) {
+            String body = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+            return parseQueryParams(body);
+        } catch (IOException e) {
+            return Map.of();
         }
     }
 }
