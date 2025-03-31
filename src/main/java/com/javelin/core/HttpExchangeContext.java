@@ -317,4 +317,43 @@ public class HttpExchangeContext implements Context {
             return Map.of();
         }
     }
+
+    /**
+     * Retrieves the value of a cookie from the request headers by name.
+     * <p>
+     * If multiple cookies are present, this method will search and return the first match.
+     *
+     * @param name the name of the cookie to look for
+     * @return the value of the cookie, or {@code null} if not found
+     */
+    @Override
+    public String cookie(String name) {
+        String cookieHeader = header("Cookie"); // Fetch the raw Cookie header from request
+        if (cookieHeader == null) return null;
+
+        String[] cookies = cookieHeader.split(";"); // Split multiple cookies
+        for (String cookie : cookies) {
+            String[] kv = cookie.trim().split("=", 2); // Split name=value
+            if (kv.length == 2 && kv[0].trim().equals(name)) {
+                return kv[1].trim(); // Return the matching cookie value
+            }
+        }
+        return null; // Not found
+    }
+
+    /**
+     * Adds a {@code Set-Cookie} header to the response with the given name, value, and lifetime.
+     * <p>
+     * The cookie will be set with path "/", and a max-age indicating its expiration time.
+     *
+     * @param name the name of the cookie to set
+     * @param value the value of the cookie
+     * @param maxAgeSeconds the cookie's lifetime in seconds (e.g. 3600 = 1 hour)
+     */
+    @Override
+    public void setCookie(String name, String value, int maxAgeSeconds) {
+        // Construct the Set-Cookie header value
+        String cookie = name + "=" + value + "; Path=/; Max-Age=" + maxAgeSeconds;
+        setHeader("Set-Cookie", cookie); // Add it to response headers
+    }
 }

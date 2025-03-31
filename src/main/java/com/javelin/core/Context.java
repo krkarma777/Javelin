@@ -137,4 +137,23 @@ public interface Context {
      * @return the value of the form field, or {@code null} if not present
      */
     String formParam(String key);
+
+    /**
+     * Retrieves the value of a cookie by name from the incoming HTTP request.
+     *
+     * @param name the name of the cookie to retrieve
+     * @return the cookie value, or {@code null} if the cookie is not present
+     */
+    String cookie(String name);
+
+    /**
+     * Sets a {@code Set-Cookie} header in the HTTP response.
+     * <p>
+     * This will instruct the client to store a cookie with the specified name, value, and lifetime.
+     *
+     * @param name           the name of the cookie
+     * @param value          the value of the cookie
+     * @param maxAgeSeconds  the lifetime of the cookie in seconds (e.g. 3600 = 1 hour)
+     */
+    void setCookie(String name, String value, int maxAgeSeconds);
 }
