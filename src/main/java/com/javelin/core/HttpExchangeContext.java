@@ -356,4 +356,17 @@ public class HttpExchangeContext implements Context {
         String cookie = name + "=" + value + "; Path=/; Max-Age=" + maxAgeSeconds;
         setHeader("Set-Cookie", cookie); // Add it to response headers
     }
+    
+    @Override
+    public String remoteIp() {
+        // Check X-Forwarded-For header first (in case behind a reverse proxy)
+        String xff = header("X-Forwarded-For");
+        if (xff != null && !xff.isBlank()) {
+            // If multiple IPs are present, take the first one (client IP)
+            return xff.split(",")[0].trim();
+        }
+
+        // Fall back to the actual remote address
+        return exchange.getRemoteAddress().getAddress().getHostAddress();
+    }
 }

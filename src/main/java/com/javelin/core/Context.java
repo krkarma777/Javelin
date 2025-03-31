@@ -156,4 +156,14 @@ public interface Context {
      * @param maxAgeSeconds  the lifetime of the cookie in seconds (e.g. 3600 = 1 hour)
      */
     void setCookie(String name, String value, int maxAgeSeconds);
+
+    /**
+     * Returns the IP address of the client making the request.
+     * <p>
+     * If the request was forwarded by a proxy, this method will attempt to use the
+     * {@code X-Forwarded-For} header. Otherwise, it falls back to the remote socket address.
+     *
+     * @return the client's IP address as a string
+     */
+    String remoteIp();
 }
