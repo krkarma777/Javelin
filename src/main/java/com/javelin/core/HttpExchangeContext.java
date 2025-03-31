@@ -369,4 +369,96 @@ public class HttpExchangeContext implements Context {
         // Fall back to the actual remote address
         return exchange.getRemoteAddress().getAddress().getHostAddress();
     }
+
+    @Override
+    public MultipartForm multipart() {
+        String contentType = header("Content-Type");
+        if (contentType == null || !contentType.startsWith("multipart/form-data")) {
+            throw new IllegalStateException("Request is not multipart/form-data");
+        }
+
+        // Extract boundary from header
+        String boundary = null;
+        for (String part : contentType.split(";")) {
+            part = part.trim();
+            if (part.startsWith("boundary=")) {
+                boundary = part.substring("boundary=".length());
+                break;
+            }
+        }
+
+        if (boundary == null) {
+            throw new IllegalStateException("No boundary found in Content-Type");
+        }
+
+        boundary = "--" + boundary; // actual boundary marker
+        String finalBoundary = boundary + "--";
+
+        try (InputStream is = exchange.getRequestBody()) {
+            byte[] raw = is.readAllBytes();
+            String body = new String(raw, StandardCharsets.ISO_8859_1); // binary-safe encoding
+
+            DefaultMultipartForm form = new DefaultMultipartForm();
+            String[] parts = body.split(boundary + "\r\n");
+
+            for (String part : parts) {
+                if (part.isBlank() || part.equals("--") || part.equals(finalBoundary)) continue;
+
+                parsePart(part, form);
+            }
+
+            return form;
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to parse multipart body", e);
+        }
+    }
+    
+    private void parsePart(String part, DefaultMultipartForm form) {
+        String[] sections = part.split("\r\n\r\n", 2); // [headers][body]
+        if (sections.length < 2) return;
+
+        String headersBlock = sections[0];
+        String bodyBlock = sections[1];
+
+        Map<String, String> headers = new HashMap<>();
+        for (String headerLine : headersBlock.split("\r\n")) {
+            int colonIndex = headerLine.indexOf(':');
+            if (colonIndex != -1) {
+                String name = headerLine.substring(0, colonIndex).trim();
+                String value = headerLine.substring(colonIndex + 1).trim();
+                headers.put(name.toLowerCase(), value);
+            }
+        }
+
+        String disposition = headers.get("content-disposition");
+        if (disposition == null || !disposition.contains("name=")) return;
+
+        String name = extractAttribute(disposition, "name");
+        String filename = extractAttribute(disposition, "filename");
+        String contentType = headers.getOrDefault("content-type", "text/plain");
+
+        // Remove trailing \r\n--
+        String cleanedBody = bodyBlock.replaceAll("\r\n--$", "").stripTrailing();
+
+        if (filename != null && !filename.isEmpty()) {
+            byte[] data = cleanedBody.getBytes(StandardCharsets.ISO_8859_1);
+            form.addFile(name, new UploadedFile(filename, contentType, data));
+        } else {
+            form.addField(name, cleanedBody);
+        }
+    }
+
+    private String extractAttribute(String header, String attrName) {
+        for (String part : header.split(";")) {
+            part = part.trim();
+            if (part.startsWith(attrName + "=")) {
+                String value = part.substring(attrName.length() + 1).trim();
+                if (value.startsWith("\"") && value.endsWith("\"")) {
+                    value = value.substring(1, value.length() - 1);
+                }
+                return value;
+            }
+        }
+        return null;
+    }
 }
