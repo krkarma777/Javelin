@@ -1,14 +1,19 @@
 package com.javelin.core;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.javelin.core.upload.DefaultMultipartForm;
+import com.javelin.core.upload.MultipartForm;
+import com.javelin.core.upload.UploadedFile;
 import com.sun.net.httpserver.HttpExchange;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 import static com.javelin.constants.HttpConstants.*;
+import static java.nio.charset.StandardCharsets.*;
 
 /**
  * Implementation of {@link Context} based on Java's built-in {@link HttpExchange}.
@@ -293,7 +298,7 @@ public class HttpExchangeContext implements Context {
      */
     private String decode(String value) {
         try {
-            return java.net.URLDecoder.decode(value, java.nio.charset.StandardCharsets.UTF_8);
+            return java.net.URLDecoder.decode(value, UTF_8);
         } catch (Exception e) {
             return value;
         }
@@ -311,7 +316,7 @@ public class HttpExchangeContext implements Context {
             return Map.of();
         }
         try (InputStream is = exchange.getRequestBody()) {
-            String body = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+            String body = new String(is.readAllBytes(), UTF_8);
             return parseQueryParams(body);
         } catch (IOException e) {
             return Map.of();

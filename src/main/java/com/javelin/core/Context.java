@@ -1,5 +1,7 @@
 package com.javelin.core;
 
+import com.javelin.core.upload.MultipartForm;
+
 import java.util.List;
 import java.util.Map;
 
@@ -166,4 +168,6 @@ public interface Context {
      * @return the client's IP address as a string
      */
     String remoteIp();
+
+    MultipartForm multipart();
 }
