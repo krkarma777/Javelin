@@ -30,10 +30,15 @@ public class Main {
         server.use(new StaticFileHandler("/static", "public"));
 
         server.get("/", ctx -> {
-            Path file = Paths.get("public/index.html");
-            String html = Files.readString(file);
-            ctx.setHeader("Content-Type", "text/html");
-            ctx.send(html);
+            try (var in = Main.class.getResourceAsStream("/public/index.html")) {
+                if (in == null) {
+                    ctx.status(404).send("index.html not found");
+                    return;
+                }
+                String html = new String(in.readAllBytes());
+                ctx.setHeader("Content-Type", "text/html");
+                ctx.send(html);
+            }
         });
 
         server.start();

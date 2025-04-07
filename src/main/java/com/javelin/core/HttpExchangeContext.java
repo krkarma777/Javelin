@@ -106,8 +106,9 @@ public class HttpExchangeContext implements Context {
      * @param code the HTTP status code (e.g., 200, 404, 500)
      */
     @Override
-    public void status(int code) {
+    public Context status(int code) {
         this.statusCode = code;
+        return this;
     }
 
     /**
@@ -117,8 +118,9 @@ public class HttpExchangeContext implements Context {
      * @param value the header value (e.g. "Enabled")
      */
     @Override
-    public void setHeader(String name, String value) {
+    public Context setHeader(String name, String value) {
         exchange.getResponseHeaders().set(name, value);
+        return this;
     }
 
     /**
@@ -362,10 +364,11 @@ public class HttpExchangeContext implements Context {
      * @param maxAgeSeconds the cookie's lifetime in seconds (e.g. 3600 = 1 hour)
      */
     @Override
-    public void setCookie(String name, String value, int maxAgeSeconds) {
+    public Context setCookie(String name, String value, int maxAgeSeconds) {
         // Construct the Set-Cookie header value
         String cookie = name + "=" + value + "; Path=/; Max-Age=" + maxAgeSeconds;
         setHeader("Set-Cookie", cookie); // Add it to response headers
+        return this;
     }
 
     /**

@@ -84,7 +84,7 @@ public interface Context {
      *
      * @param code the HTTP status code (e.g., 200, 400, 500)
      */
-    void status(int code);
+    Context status(int code);
 
     /**
      * Sets a response header before the response is sent.
@@ -92,7 +92,7 @@ public interface Context {
      * @param name  the header name (e.g., "X-Custom-Header")
      * @param value the header value (e.g., "Enabled")
      */
-    void setHeader(String name, String value);
+    Context setHeader(String name, String value);
 
     /**
      * Returns the captured path variable by name.
@@ -157,7 +157,7 @@ public interface Context {
      * @param value          the value of the cookie
      * @param maxAgeSeconds  the lifetime of the cookie in seconds (e.g. 3600 = 1 hour)
      */
-    void setCookie(String name, String value, int maxAgeSeconds);
+    Context setCookie(String name, String value, int maxAgeSeconds);
 
     /**
      * Returns the IP address of the client making the request.
