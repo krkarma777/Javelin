@@ -30,7 +30,7 @@ It aims to provide a modern alternative to traditional Java-based WAS solutions 
 
 ### 1. Clone the repository
 ```sh
-git clone https://github.com/your-repo/javelin-was.git
+git clone https://github.com/your-repo/Javelin.git
 cd javelin-was
 ```
 
