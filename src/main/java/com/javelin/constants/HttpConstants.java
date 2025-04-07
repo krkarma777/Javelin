@@ -46,10 +46,10 @@ public final class HttpConstants {
     // MIME
     public static final String TEXT_CSS = "text/css";
     public static final String TEXT_JS = "text/javascript";
-    public static final String IMAGE_PNG = "image/png";
-    public static final String IMAGE_JPEG = "image/jpeg";
-    public static final String IMAGE_GIF = "image/gif";
-    public static final String IMAGE_SVG = "image/svg+xml";
+    public static final String IMAGE_PNG = "public/images/png";
+    public static final String IMAGE_JPEG = "public/images/jpeg";
+    public static final String IMAGE_GIF = "public/images/gif";
+    public static final String IMAGE_SVG = "public/images/svg+xml";
     public static final String TEXT_TXT = "text/plain";
     public static final String APPLICATION_OCTET_STREAM = "application/octet-stream";
 

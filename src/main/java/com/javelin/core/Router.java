@@ -81,25 +81,29 @@ public class Router {
      * e.g. "/users/{id}" -> "^/users/(?<id>[^/]+)/?$"
      */
     private String convertPathToRegex(String pathPattern, List<String> paramNames) {
-        // split on '/'
         String[] segments = pathPattern.split("/");
         StringBuilder sb = new StringBuilder("^");
 
-        for (String seg : segments) {
-            if (seg.isEmpty()) continue; // skip leading slash
+        for (int i = 0; i < segments.length; i++) {
+            String seg = segments[i];
+            if (seg.isEmpty()) continue;
 
             sb.append("/");
+
             if (seg.startsWith("{") && seg.endsWith("}")) {
-                // a path variable
                 String varName = seg.substring(1, seg.length() - 1);
                 paramNames.add(varName);
                 sb.append("(?<").append(varName).append(">[^/]+)");
+            } else if (seg.equals("*") && i == segments.length - 1) {
+                // 마지막 segment가 *일 때만 허용
+                paramNames.add("wildcard");
+                sb.append("(?<wildcard>.*)");
             } else {
-                // normal segment
                 sb.append(Pattern.quote(seg));
             }
         }
-        sb.append("/?$"); // optional trailing slash
+
+        sb.append("/?$");
         return sb.toString();
     }
 }

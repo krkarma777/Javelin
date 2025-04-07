@@ -18,9 +18,7 @@ package com.javelin;
 import com.javelin.core.CorsMiddleware;
 import com.javelin.core.StaticFileHandler;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.io.IOException;
 
 public class Main {
     public static void main(String[] args) {
@@ -41,6 +39,35 @@ public class Main {
             }
         });
 
+        server.get("/images/*", ctx -> {
+            // pathVar("wildcard")로 *에 해당하는 실제 경로 추출
+            String fileName = ctx.pathVar("wildcard");  // 예: "logo.png" or "folder/nested.png"
+            String filePath = "/public/images/" + fileName;
+
+            try (var in = Main.class.getResourceAsStream(filePath)) {
+                if (in == null) {
+                    ctx.status(404).send("Image not found: " + fileName);
+                    return;
+                }
+
+                String contentType = getMimeType(fileName);
+                ctx.setHeader("Content-Type", contentType);
+                ctx.sendBytes(in.readAllBytes());
+
+            } catch (IOException e) {
+                ctx.status(500).send("Error reading image");
+            }
+        });
+
+
         server.start();
+    }
+
+    private static String getMimeType(String filename) {
+        if (filename.endsWith(".png")) return "image/png";
+        if (filename.endsWith(".jpg") || filename.endsWith(".jpeg")) return "image/jpeg";
+        if (filename.endsWith(".gif")) return "image/gif";
+        if (filename.endsWith(".svg")) return "image/svg+xml";
+        return "application/octet-stream";
     }
 }
