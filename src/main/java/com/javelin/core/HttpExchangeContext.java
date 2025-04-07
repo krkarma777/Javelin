@@ -230,6 +230,12 @@ public class HttpExchangeContext implements Context {
         }
     }
 
+    /**
+     * Sends a binary response (e.g. image or file) with the currently set HTTP status.
+     * This also closes the exchange.
+     *
+     * @param data the binary response data
+     */
     @Override
     public void sendBytes(byte[] data) {
         try {
@@ -361,7 +367,15 @@ public class HttpExchangeContext implements Context {
         String cookie = name + "=" + value + "; Path=/; Max-Age=" + maxAgeSeconds;
         setHeader("Set-Cookie", cookie); // Add it to response headers
     }
-    
+
+    /**
+     * Returns the client's IP address, considering reverse proxies.
+     * <p>
+     * It checks the {@code X-Forwarded-For} header first, then falls back
+     * to the socket's remote address.
+     *
+     * @return the client's IP address as a string
+     */
     @Override
     public String remoteIp() {
         // Check X-Forwarded-For header first (in case behind a reverse proxy)
@@ -375,6 +389,14 @@ public class HttpExchangeContext implements Context {
         return exchange.getRemoteAddress().getAddress().getHostAddress();
     }
 
+    /**
+     * Parses the incoming request as a {@code multipart/form-data} form.
+     * <p>
+     * This method supports file uploads and text fields.
+     *
+     * @return the parsed multipart form object
+     * @throws IllegalStateException if the request is not multipart/form-data
+     */
     @Override
     public MultipartForm multipart() {
         String contentType = header("Content-Type");
@@ -417,7 +439,24 @@ public class HttpExchangeContext implements Context {
             throw new RuntimeException("Failed to parse multipart body", e);
         }
     }
-    
+
+    /**
+     * Returns the HTTP method of the current request.
+     *
+     * @return the HTTP method string (e.g. "GET", "POST", "OPTIONS")
+     */
+    @Override
+    public String method() {
+        return exchange.getRequestMethod();
+    }
+
+    /**
+     * Parses a single part of a multipart/form-data body and stores it in the form.
+     * This method handles both text fields and file uploads.
+     *
+     * @param part the raw multipart body part
+     * @param form the form object to populate
+     */
     private void parsePart(String part, DefaultMultipartForm form) {
         String[] sections = part.split("\r\n\r\n", 2); // [headers][body]
         if (sections.length < 2) return;
@@ -453,6 +492,15 @@ public class HttpExchangeContext implements Context {
         }
     }
 
+    /**
+     * Extracts the value of an attribute from a multipart header string.
+     * <p>
+     * For example, given {@code name="file"} or {@code filename="image.jpg"}.
+     *
+     * @param header   the full header string
+     * @param attrName the attribute name to extract
+     * @return the attribute value or {@code null} if not found
+     */
     private String extractAttribute(String header, String attrName) {
         for (String part : header.split(";")) {
             part = part.trim();

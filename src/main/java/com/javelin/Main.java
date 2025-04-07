@@ -15,6 +15,7 @@
  */
 package com.javelin;
 
+import com.javelin.core.CorsMiddleware;
 import com.javelin.core.StaticFileHandler;
 
 import java.nio.file.Files;
@@ -25,6 +26,7 @@ public class Main {
     public static void main(String[] args) {
         VirtualThreadServer server = new VirtualThreadServer(8080);
 
+        server.use(new CorsMiddleware());
         server.use(new StaticFileHandler("/static", "public"));
 
         server.get("/", ctx -> {

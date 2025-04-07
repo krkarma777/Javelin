@@ -120,7 +120,7 @@ public interface Context {
      * @param finalHandler the handler to execute at the end of the middleware chain
      */
     void setFinalHandler(Runnable finalHandler);
-    
+
     /**
      * Sends a raw byte[] response to the client.
      * This also ends the exchange.
@@ -169,5 +169,22 @@ public interface Context {
      */
     String remoteIp();
 
+    /**
+     * Parses the incoming request as a {@code multipart/form-data} body.
+     * <p>
+     * This method supports both file uploads and regular form fields.
+     * It should be used when handling file upload endpoints.
+     *
+     * @return the parsed multipart form
+     */
     MultipartForm multipart();
+
+    /**
+     * Returns the HTTP method of the current request.
+     * <p>
+     * For example: {@code "GET"}, {@code "POST"}, {@code "PUT"}, etc.
+     *
+     * @return the HTTP method string
+     */
+    String method();
 }
